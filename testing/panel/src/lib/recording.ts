@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { aiEventClient as baseAiEventClient } from '@tanstack/ai/event-client'
-import type { AIDevtoolsEventMap } from '../../../../packages/typescript/ai/src/event-client'
 import type { StreamChunk } from '@tanstack/ai'
 
 /**
@@ -194,21 +193,8 @@ export function createEventRecording(
     id,
   })
 
-  type DevtoolsEventHandler<TEventName extends keyof AIDevtoolsEventMap> =
-    (event: { payload: AIDevtoolsEventMap[TEventName] }) => void
-
-  type DevtoolsEventClient = {
-    on: <TEventName extends keyof AIDevtoolsEventMap>(
-      eventName: TEventName,
-      handler: DevtoolsEventHandler<TEventName>,
-      options?: { withEventTarget?: boolean },
-    ) => () => void
-  }
-
-  const aiEventClient = baseAiEventClient as DevtoolsEventClient
-
   // Subscribe to text:request:started to initialize recording
-  const unsubscribeStarted = aiEventClient.on(
+  const unsubscribeStarted = baseAiEventClient.on(
     'text:request:started',
     (event) => {
       const { streamId, model, provider, requestId, options, modelOptions } =
@@ -247,7 +233,7 @@ export function createEventRecording(
   }
 
   // Subscribe to content chunks
-  const unsubscribeContent = aiEventClient.on(
+  const unsubscribeContent = baseAiEventClient.on(
     'text:chunk:content',
     (event) => {
       const { streamId, content, delta, timestamp, model } = event.payload
@@ -274,7 +260,7 @@ export function createEventRecording(
   )
 
   // Subscribe to tool call chunks
-  const unsubscribeToolCall = aiEventClient.on(
+  const unsubscribeToolCall = baseAiEventClient.on(
     'text:chunk:tool-call',
     (event) => {
       const {
@@ -322,7 +308,7 @@ export function createEventRecording(
   )
 
   // Subscribe to tool result chunks
-  const unsubscribeToolResult = aiEventClient.on(
+  const unsubscribeToolResult = baseAiEventClient.on(
     'text:chunk:tool-result',
     (event) => {
       const { streamId, toolCallId, result, timestamp, model } = event.payload
@@ -348,7 +334,7 @@ export function createEventRecording(
   )
 
   // Subscribe to done chunks
-  const unsubscribeDone = aiEventClient.on(
+  const unsubscribeDone = baseAiEventClient.on(
     'text:chunk:done',
     (event) => {
       const { streamId, finishReason, usage, timestamp, model } = event.payload
@@ -375,7 +361,7 @@ export function createEventRecording(
   )
 
   // Subscribe to error chunks
-  const unsubscribeError = aiEventClient.on(
+  const unsubscribeError = baseAiEventClient.on(
     'text:chunk:error',
     (event) => {
       const { streamId, error, timestamp, model } = event.payload
@@ -395,7 +381,7 @@ export function createEventRecording(
   )
 
   // Subscribe to thinking chunks
-  const unsubscribeThinking = aiEventClient.on(
+  const unsubscribeThinking = baseAiEventClient.on(
     'text:chunk:thinking',
     (event) => {
       const { streamId, content, delta, timestamp, model } = event.payload
@@ -421,7 +407,7 @@ export function createEventRecording(
   )
 
   // Subscribe to text:request:completed to get final tool calls
-  const unsubscribeChatCompleted = aiEventClient.on(
+  const unsubscribeChatCompleted = baseAiEventClient.on(
     'text:request:completed',
     (event) => {
       const { streamId, content, finishReason } = event.payload
@@ -436,7 +422,7 @@ export function createEventRecording(
   )
 
   // Subscribe to tools:call:completed to update tool call results
-  const unsubscribeToolCompleted = aiEventClient.on(
+  const unsubscribeToolCompleted = baseAiEventClient.on(
     'tools:call:completed',
     (event) => {
       const { streamId, toolCallId, toolName, result } = event.payload
@@ -462,7 +448,7 @@ export function createEventRecording(
   )
 
   // Subscribe to text:request:completed to save recording
-  const unsubscribeStreamEnded = aiEventClient.on(
+  const unsubscribeStreamEnded = baseAiEventClient.on(
     'text:request:completed',
     async (event) => {
       const { streamId } = event.payload

@@ -430,68 +430,127 @@ export interface ClientStoppedEvent {
 
 export interface AIDevtoolsEventMap {
   // Text events
-  'tanstack-ai-devtools:text:request:started': TextRequestStartedEvent
-  'tanstack-ai-devtools:text:request:completed': TextRequestCompletedEvent
-  'tanstack-ai-devtools:text:message:created': TextMessageCreatedEvent
-  'tanstack-ai-devtools:text:message:user': TextMessageUserEvent
-  'tanstack-ai-devtools:text:chunk:content': TextChunkContentEvent
-  'tanstack-ai-devtools:text:chunk:tool-call': TextChunkToolCallEvent
-  'tanstack-ai-devtools:text:chunk:tool-result': TextChunkToolResultEvent
-  'tanstack-ai-devtools:text:chunk:thinking': TextChunkThinkingEvent
-  'tanstack-ai-devtools:text:chunk:done': TextChunkDoneEvent
-  'tanstack-ai-devtools:text:chunk:error': TextChunkErrorEvent
-  'tanstack-ai-devtools:text:usage': TextUsageEvent
+  'text:request:started': TextRequestStartedEvent
+  'text:request:completed': TextRequestCompletedEvent
+  'text:message:created': TextMessageCreatedEvent
+  'text:message:user': TextMessageUserEvent
+  'text:chunk:content': TextChunkContentEvent
+  'text:chunk:tool-call': TextChunkToolCallEvent
+  'text:chunk:tool-result': TextChunkToolResultEvent
+  'text:chunk:thinking': TextChunkThinkingEvent
+  'text:chunk:done': TextChunkDoneEvent
+  'text:chunk:error': TextChunkErrorEvent
+  'text:usage': TextUsageEvent
 
   // Tool events
-  'tanstack-ai-devtools:tools:approval:requested': ToolsApprovalRequestedEvent
-  'tanstack-ai-devtools:tools:approval:responded': ToolsApprovalRespondedEvent
-  'tanstack-ai-devtools:tools:input:available': ToolsInputAvailableEvent
-  'tanstack-ai-devtools:tools:call:completed': ToolsCallCompletedEvent
-  'tanstack-ai-devtools:tools:result:added': ToolsResultAddedEvent
-  'tanstack-ai-devtools:tools:call:updated': ToolsCallUpdatedEvent
+  'tools:approval:requested': ToolsApprovalRequestedEvent
+  'tools:approval:responded': ToolsApprovalRespondedEvent
+  'tools:input:available': ToolsInputAvailableEvent
+  'tools:call:completed': ToolsCallCompletedEvent
+  'tools:result:added': ToolsResultAddedEvent
+  'tools:call:updated': ToolsCallUpdatedEvent
 
   // Summarize events
-  'tanstack-ai-devtools:summarize:request:started': SummarizeRequestStartedEvent
-  'tanstack-ai-devtools:summarize:request:completed': SummarizeRequestCompletedEvent
-  'tanstack-ai-devtools:summarize:usage': SummarizeUsageEvent
+  'summarize:request:started': SummarizeRequestStartedEvent
+  'summarize:request:completed': SummarizeRequestCompletedEvent
+  'summarize:usage': SummarizeUsageEvent
 
   // Image events
-  'tanstack-ai-devtools:image:request:started': ImageRequestStartedEvent
-  'tanstack-ai-devtools:image:request:completed': ImageRequestCompletedEvent
-  'tanstack-ai-devtools:image:usage': ImageUsageEvent
+  'image:request:started': ImageRequestStartedEvent
+  'image:request:completed': ImageRequestCompletedEvent
+  'image:usage': ImageUsageEvent
 
   // Speech events
-  'tanstack-ai-devtools:speech:request:started': SpeechRequestStartedEvent
-  'tanstack-ai-devtools:speech:request:completed': SpeechRequestCompletedEvent
-  'tanstack-ai-devtools:speech:usage': SpeechUsageEvent
+  'speech:request:started': SpeechRequestStartedEvent
+  'speech:request:completed': SpeechRequestCompletedEvent
+  'speech:usage': SpeechUsageEvent
 
   // Transcription events
-  'tanstack-ai-devtools:transcription:request:started': TranscriptionRequestStartedEvent
-  'tanstack-ai-devtools:transcription:request:completed': TranscriptionRequestCompletedEvent
-  'tanstack-ai-devtools:transcription:usage': TranscriptionUsageEvent
+  'transcription:request:started': TranscriptionRequestStartedEvent
+  'transcription:request:completed': TranscriptionRequestCompletedEvent
+  'transcription:usage': TranscriptionUsageEvent
 
   // Video events
-  'tanstack-ai-devtools:video:request:started': VideoRequestStartedEvent
-  'tanstack-ai-devtools:video:request:completed': VideoRequestCompletedEvent
-  'tanstack-ai-devtools:video:usage': VideoUsageEvent
+  'video:request:started': VideoRequestStartedEvent
+  'video:request:completed': VideoRequestCompletedEvent
+  'video:usage': VideoUsageEvent
 
   // Client events
-  'tanstack-ai-devtools:client:created': ClientCreatedEvent
-  'tanstack-ai-devtools:client:loading:changed': ClientLoadingChangedEvent
-  'tanstack-ai-devtools:client:error:changed': ClientErrorChangedEvent
-  'tanstack-ai-devtools:client:messages:cleared': ClientMessagesClearedEvent
-  'tanstack-ai-devtools:client:reloaded': ClientReloadedEvent
-  'tanstack-ai-devtools:client:stopped': ClientStoppedEvent
+  'client:created': ClientCreatedEvent
+  'client:loading:changed': ClientLoadingChangedEvent
+  'client:error:changed': ClientErrorChangedEvent
+  'client:messages:cleared': ClientMessagesClearedEvent
+  'client:reloaded': ClientReloadedEvent
+  'client:stopped': ClientStoppedEvent
 }
 
-class AiEventClient extends EventClient<AIDevtoolsEventMap> {
-  constructor() {
-    super({
-      pluginId: 'tanstack-ai-devtools',
-    })
-  }
+const AI_DEVTOOLS_PLUGIN_ID = 'tanstack-ai-devtools'
+
+/**
+ * Prefixed event map for EventClient internal use.
+ * EventClient expects keys prefixed with the pluginId.
+ */
+type PrefixedAIDevtoolsEventMap = {
+  [K in keyof AIDevtoolsEventMap as `${typeof AI_DEVTOOLS_PLUGIN_ID}:${K & string}`]: AIDevtoolsEventMap[K]
 }
 
-const aiEventClient = new AiEventClient()
+// Ensure a shared EventTarget exists for server environments (Node, Bun,
+// Cloudflare Workers) where there is no `window` and no pre-configured
+// `globalThis.__TANSTACK_EVENT_TARGET__`.  Without this, `getGlobalTarget()`
+// inside EventClient creates a **new** EventTarget on every call, so
+// emit() and on() dispatch/listen on different instances.
+if (
+  typeof globalThis !== 'undefined' &&
+  !globalThis.__TANSTACK_EVENT_TARGET__ &&
+  typeof window === 'undefined' &&
+  typeof EventTarget !== 'undefined'
+) {
+  globalThis.__TANSTACK_EVENT_TARGET__ = new EventTarget()
+}
+
+interface AIDevtoolsEvent<
+  TSuffix extends keyof AIDevtoolsEventMap & string,
+> {
+  type: `${typeof AI_DEVTOOLS_PLUGIN_ID}:${TSuffix}`
+  payload: AIDevtoolsEventMap[TSuffix]
+  pluginId?: string
+}
+
+/**
+ * Explicit public interface for aiEventClient.
+ * EventClient's conditional-type generics don't resolve correctly
+ * when consumed from .d.ts, so we provide explicit short-suffix types.
+ */
+export interface AiEventClient {
+  emit<TSuffix extends keyof AIDevtoolsEventMap & string>(
+    eventSuffix: TSuffix,
+    payload: AIDevtoolsEventMap[TSuffix],
+  ): void
+
+  on<TSuffix extends keyof AIDevtoolsEventMap & string>(
+    eventSuffix: TSuffix,
+    cb: (event: AIDevtoolsEvent<TSuffix>) => void,
+    options?: { withEventTarget?: boolean },
+  ): () => void
+
+  onAll(
+    cb: (event: AIDevtoolsEvent<keyof AIDevtoolsEventMap & string>) => void,
+  ): () => void
+
+  onAllPluginEvents(
+    cb: (event: AIDevtoolsEvent<keyof AIDevtoolsEventMap & string>) => void,
+  ): () => void
+
+  getPluginId(): typeof AI_DEVTOOLS_PLUGIN_ID
+
+  createEventPayload<TSuffix extends keyof AIDevtoolsEventMap & string>(
+    eventSuffix: TSuffix,
+    payload: AIDevtoolsEventMap[TSuffix],
+  ): AIDevtoolsEvent<TSuffix>
+}
+
+const aiEventClient: AiEventClient = new EventClient<PrefixedAIDevtoolsEventMap>({
+  pluginId: AI_DEVTOOLS_PLUGIN_ID,
+}) as unknown as AiEventClient
 
 export { aiEventClient }
