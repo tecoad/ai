@@ -763,14 +763,22 @@ export const AIProvider: ParentComponent = (props) => {
           return
         }
 
-        // Skip empty assistant messages from client - the real content comes from server
+        // Skip empty assistant messages from client only when server events are available.
+        // When server events aren't available (e.g. isolated runtimes like Cloudflare Workers),
+        // we still need to create the assistant message entry so streaming chunks can update it.
         if (
           role === 'assistant' &&
           source === 'client' &&
           !content &&
           (!toolCalls || toolCalls.length === 0)
         ) {
-          return
+          // Check if we have any server conversations - if so, server events will provide the content
+          const hasServerConversations = Object.values(
+            state.conversations,
+          ).some((c) => c.type === 'server')
+          if (hasServerConversations) {
+            return
+          }
         }
 
         const messagePayload: Message = {
@@ -1138,8 +1146,10 @@ export const AIProvider: ParentComponent = (props) => {
 
     cleanupFns.push(
       aiEventClient.on('text:chunk:content', (e) => {
-        const streamId = e.payload.streamId
-        const conversationId = streamToConversation.get(streamId)
+        const { streamId, clientId } = e.payload
+        const conversationId =
+          clientId ||
+          (streamId ? streamToConversation.get(streamId) : undefined)
         if (!conversationId) return
 
         const chunk: Chunk = {
@@ -1179,8 +1189,10 @@ export const AIProvider: ParentComponent = (props) => {
 
     cleanupFns.push(
       aiEventClient.on('text:chunk:tool-call', (e) => {
-        const streamId = e.payload.streamId
-        const conversationId = streamToConversation.get(streamId)
+        const { streamId, clientId } = e.payload
+        const conversationId =
+          clientId ||
+          (streamId ? streamToConversation.get(streamId) : undefined)
         if (!conversationId) return
 
         const chunk: Chunk = {
@@ -1246,8 +1258,10 @@ export const AIProvider: ParentComponent = (props) => {
 
     cleanupFns.push(
       aiEventClient.on('text:chunk:tool-result', (e) => {
-        const streamId = e.payload.streamId
-        const conversationId = streamToConversation.get(streamId)
+        const { streamId, clientId } = e.payload
+        const conversationId =
+          clientId ||
+          (streamId ? streamToConversation.get(streamId) : undefined)
         if (!conversationId) return
 
         const chunk: Chunk = {
@@ -1295,8 +1309,10 @@ export const AIProvider: ParentComponent = (props) => {
 
     cleanupFns.push(
       aiEventClient.on('text:chunk:thinking', (e) => {
-        const streamId = e.payload.streamId
-        const conversationId = streamToConversation.get(streamId)
+        const { streamId, clientId } = e.payload
+        const conversationId =
+          clientId ||
+          (streamId ? streamToConversation.get(streamId) : undefined)
         if (!conversationId) return
 
         const chunk: Chunk = {
@@ -1336,8 +1352,10 @@ export const AIProvider: ParentComponent = (props) => {
 
     cleanupFns.push(
       aiEventClient.on('text:chunk:done', (e) => {
-        const streamId = e.payload.streamId
-        const conversationId = streamToConversation.get(streamId)
+        const { streamId, clientId } = e.payload
+        const conversationId =
+          clientId ||
+          (streamId ? streamToConversation.get(streamId) : undefined)
         if (!conversationId) return
 
         const chunk: Chunk = {
@@ -1379,8 +1397,10 @@ export const AIProvider: ParentComponent = (props) => {
 
     cleanupFns.push(
       aiEventClient.on('text:chunk:error', (e) => {
-        const streamId = e.payload.streamId
-        const conversationId = streamToConversation.get(streamId)
+        const { streamId, clientId } = e.payload
+        const conversationId =
+          clientId ||
+          (streamId ? streamToConversation.get(streamId) : undefined)
         if (!conversationId) return
 
         const chunk: Chunk = {
