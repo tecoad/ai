@@ -15,11 +15,25 @@ const config = defineConfig({
   },
 })
 
-export default mergeConfig(
+const merged = mergeConfig(
   config,
   tanstackViteConfig({
     entry: ['./src/index.ts', './src/production.ts'],
     srcDir: './src',
     cjs: false,
+    bundledDeps: [
+      'solid-js',
+      'solid-js/web',
+      'solid-js/store',
+      '@tanstack/devtools-utils',
+      '@tanstack/devtools-utils/solid',
+      '@tanstack/devtools-ui',
+      'goober',
+    ],
   }),
 )
+
+merged.build.rollupOptions.output.manualChunks = undefined
+merged.build.rollupOptions.output.preserveModules = false
+
+export default merged
